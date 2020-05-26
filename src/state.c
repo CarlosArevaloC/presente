@@ -1,10 +1,11 @@
 #include "state.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <raylib.h>
+
 
 state *state_new(){
     // Ask for memory for the state
@@ -45,6 +46,65 @@ void state_update(level *lvl, state *sta){
         sta->pla.ent.vx = mov_x/mov_norm * PLAYER_SPEED;
         sta->pla.ent.vy = mov_y/mov_norm * PLAYER_SPEED;
     }
+
+    //ISSUE #7 : ENEMIES INTELIGENCE
+    // Settings for each enemy
+    for (int i = 0; i < sta->n_enemies; i++){
+        //Distance between player and enemies
+        float enemy_dx = sta->pla.ent.x - sta->enemies[i].ent.x;
+        float enemy_dy = sta->pla.ent.y - sta->enemies[i].ent.y;
+        float enemy_dt = sqrt(pow(enemy_dx,2)+pow(enemy_dy,2));
+        //Enemies will move as long as the enemy_dt between them and the player is less than ENEMIES_VIEW
+        if(enemy_dt <= ENEMIES_VIEW){
+            //Case for each kind of enemy. Minion are 0, Brute are 1.
+            switch(sta->enemies[i].kind){    
+                //Case for Minion: just follows the player 
+                case 0:    
+                    sta->enemies[i].ent.vx = enemy_dx/enemy_dt * ENEMIES_MAXSPEED;
+                    sta->enemies[i].ent.vy = enemy_dy/enemy_dt * ENEMIES_MAXSPEED;
+                    break; 
+                //Case for Brute: Moves to player's detection position with constant speed
+                case 1:
+                    //If Brute enemies are stopped
+                    if((sta->enemies[i].ent.vx && sta->enemies[i].ent.vy) == 0){
+                        //Brute enemies will move to the detection position and it will be saved to keep movement straight into position
+                        sta->enemies[i].ent.vx = enemy_dx/enemy_dt * ENEMIES_MAXSPEED ;
+                        sta->enemies[i].ent.vy = enemy_dy/enemy_dt * ENEMIES_MAXSPEED ;
+                        sta->enemies[i].ent.detection_pos = enemy_dt;  
+                        break;   
+                    }
+                    //If Brute enemies are moving
+                    else{
+                        //If detection position is 0 or less, that means that the enemy catches the player, so they will stop.
+                        if(sta->enemies[i].ent.detection_pos <= 0){
+                            sta->enemies[i].ent.vx = 0;
+                            sta->enemies[i].ent.vy = 0;
+                        } 
+                        else{
+                            //Otherwise, If Brute enemies are moving, the position of them will be change. So, the moving position will be
+                            float enemy_vt = sqrt(pow(sta->enemies[i].ent.vx,2) + pow(sta->enemies[i].ent.vy,2));
+                            //If the player keeps inside of the enemy's view, now the new detection position will the difference of both
+                            sta->enemies[i].ent.detection_pos -= enemy_vt;    
+                        }
+                    }
+            }
+        }
+        //Enemies will stop or won't move as long as the enemy_dt between them and the player is more than ENEMIES_VIEW
+        else{
+            //Cases when the ENEMY_DIST is bigger than enemy_dt
+            switch(sta->enemies[i].kind){
+                //Minion enemies will slow down
+                case 0:
+                    sta->enemies[i].ent.vx *= 0.9;
+                    sta->enemies[i].ent.vy *= 0.9;
+                //Brute enemies will stop
+                case 1:
+                    sta->enemies[i].ent.vx = 0;
+                    sta->enemies[i].ent.vy = 0;
+            }
+        }
+    }
+    // END OF ISSUE #7
 
     // == Make the player shoot
     // Lower the player's cooldown by 1
