@@ -9,12 +9,15 @@ typedef struct {
     float x,y;
     // velocity
     float vx,vy;
+    //detection position (distance)
+    float detection_pos;
     // radious
     int rad;
     // hit points (or damage)
     int hp;
     // if it is dead or not
     int dead;
+
 } entity;
 
 /* Updates the entity position according to its velocity.
